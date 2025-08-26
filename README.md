@@ -1,109 +1,97 @@
 # winget_update
 
-A small Windows-focused Rust utility that automates checking for and installing available updates using winget. The program:
+Pequeno utilitário para Windows escrito em Rust que automatiza a verificação e instalação de atualizações usando o winget. O programa:
 
-- Calls `winget list --upgrade-available` to obtain a list of packages with available updates.
-- Filters and saves the result to a temporary file on the desktop (`winget_list.txt`).
-- Iterates the list and runs `winget update` for each package (skipping apps listed in the excluded list).
-- Updates the Rust toolchain via `rustup update` after processing application updates.
-- Removes the temporary file and prints a summary of updated and skipped applications.
+- Executa `winget upgrade` para obter a tabela de pacotes com atualização disponível.
+- Faz o parse da saída para extrair Nome, Id, versão atual e versão disponível.
+- Mostra a lista encontrada e, para cada pacote não excluído, executa `winget update -q <ID> --accept-package-agreements --accept-source-agreements`.
+- Ao final, executa `rustup update` para atualizar o toolchain do Rust.
+- Imprime um resumo do que foi atualizado e do que foi ignorado.
 
-This repository contains a compact command-line program with colored console output and a small ASCII logo.
+A aplicação exibe um pequeno logo em ASCII e usa cores no terminal para facilitar a leitura.
 
-## Features
+## Como funciona
 
-- Uses winget to detect and install updates automatically.
-- Skips user-specified applications (configured in source).
-- Saves intermediate data to a desktop temporary file so you can inspect the list before updates.
-- Prints a summary of how many applications were updated or skipped.
-- Updates the Rust toolchain at the end.
+1. Logo na inicialização, o programa verifica se o code page do console é UTF-8 (CP 65001) e apenas informa caso não seja.
+2. Obtém a lista de upgrades com `winget upgrade` e faz o parse das linhas da tabela.
+3. Exibe os pacotes encontrados (nome e versões).
+4. Para cada pacote:
+   - Se o nome contiver qualquer item da lista de exclusões (array `excluded_apps`), o pacote é pulado.
+   - Caso contrário, roda `winget update` usando o ID do pacote (mais confiável que o nome) com aceite automático dos termos.
+5. Ao final, chama `rustup update` e imprime um resumo com contagem de atualizados e ignorados.
 
-## Requirements
+Observações de parsing:
+- O código ignora as duas primeiras linhas da saída tabular e interrompe a leitura quando encontra a linha de rodapé que contém "atualizações disponíveis" (pt-BR) ou "upgrades available" (en), ou uma linha em branco.
+- O nome do aplicativo pode conter espaços; o parser reagrupa os campos para extrair corretamente `name`, `id`, `current_version`, `available_version` e `source`.
 
-- Windows 10/11 (winget is only available on Windows)
-- winget installed and available in PATH
-- Rust toolchain (to build from source) with `cargo` and `rustup`
+## Requisitos
 
-## Dependencies
+- Windows 10/11 (winget só está disponível no Windows).
+- winget instalado e disponível no PATH.
+- Para compilar a partir do código-fonte: Rust (cargo) instalado.
+- Para que a etapa final funcione: `rustup` instalado (senão a chamada a `rustup update` falhará).
 
-The project uses these crates (declared in Cargo.toml):
+## Dependências (Cargo.toml)
 
-- colored = "3.0.0" — colored terminal output
-- dirs = "6.0.0" — to find the Desktop path
-- winapi = { version = "0.3.9", features = ["consoleapi"] } — to query console code page on Windows
+- Runtime:
+  - `colored` — cores no terminal.
+  - `figlet-rs` — geração do logo em ASCII.
+  - `winapi` (feature `consoleapi`) — consulta ao code page do console.
+- Build (Windows):
+  - `winres` — inclui recursos do Windows (ícone) no executável.
+- Nota: `dirs` está listado, mas não é usado no código atual e pode ser removido se desejado.
 
-Build-time dependency for Windows resources (optional):
+## Build e execução
 
-- winres = "0.1" (configured as a build-dependency for windows target)
+A partir da raiz do repositório:
 
-## Build & Run
+- Compilar em release (recomendado):
 
-From the repository root:
+  bash
+  cargo build --release
 
-1. Build in release mode (recommended):
+- Executar (via cargo ou o binário gerado):
 
-   cargo build --release
+  bash
+  cargo run --release
 
-2. Run the compiled binary (or run directly with cargo):
+O executável de release ficará em `target/release/`.
 
-   cargo run --release
+## Uso
 
-The release build will be placed under `target/release/`.
+- Execute o binário. Será exibida a lista de pacotes com atualização disponível e, em seguida, o processo de atualização.
+- Pode ser necessário executar com privilégios elevados (Administrador) para que algumas instalações sejam concluídas pelo winget.
 
-Note: .cargo/config.toml contains `-C target-feature=+crt-static`. This attempts to link the CRT statically for the provided Windows targets. If you do not want static CRT linking or encounter linker issues, remove or edit that flag.
+## Configuração
 
-## Configuration
+- Lista de exclusões: definida em `src/main.rs` no array `excluded_apps`.
+  - Padrão: `["BlueStacks", "AutoIt", "Discord"]`.
+  - A verificação é por substring no nome do pacote (se o nome contém o texto). Ajuste conforme sua necessidade e recompile.
+- Aceite de termos: o programa chama `winget update` com `--accept-package-agreements` e `--accept-source-agreements`.
 
-- Excluded applications are hard-coded in `src/main.rs` in the `excluded_apps` array. By default:
+## Recursos do Windows (ícone)
 
-  let excluded_apps = ["BlueStacks", "AutoIt", "Discord"];
+- Em Windows, `build.rs` usa `winres` para embutir o ícone `ICON.ico` no executável. Certifique-se de manter o arquivo `ICON.ico` na raiz do projeto para que o ícone seja aplicado.
 
-  Modify this list and rebuild to change which applications are skipped.
+## Limitações e melhorias possíveis
 
-- Temporary file path: the program writes `winget_list.txt` to your Desktop directory. The file is removed at the end, but the file remains if the remove fails for any reason.
+- A análise da saída depende do formato tabular do `winget upgrade` e pode quebrar se a formatação mudar em versões futuras do winget.
+- Atualmente para na linha de resumo (em português/inglês). Se usar outro idioma, ajuste as palavras-chave no código.
+- Possíveis melhorias:
+  - Tornar a lista de exclusões configurável por CLI/arquivo/env (ex.: com `clap`).
+  - Adicionar modo "dry-run" (simular sem aplicar) e logs em arquivo.
+  - Tornar o parser mais resiliente ou usar um formato estruturado se/quando disponível.
 
-- Header detection: the code currently looks for a header line that contains the Portuguese column names `"Nome"` and `"ID"` to locate the start of the table. If your winget locale prints headers in English or another language (for example, `Name` and `Id`), the header detection may not work correctly. Consider updating this check in `src/main.rs` to match your locale or implement a more robust parsing strategy.
+## Metadados do projeto
 
-## Example behavior
+- Nome: `winget_update`
+- Versão: 0.1.0
+- Perfil de release: otimizações para tamanho, LTO, `panic = "abort"`, símbolos de debug removidos (ver `Cargo.toml`).
 
-- The program prints a colored logo and an information header, then runs `winget list --upgrade-available` and prints each discovered line.
-- For each package that looks like a winget-managed entry, it runs `winget update -q <package> --accept-package-agreements --accept-source-agreements`.
-- A short summary is printed at the end with counts of updated and skipped applications.
+## Licença
 
-## Troubleshooting
+Ainda não há licença incluída. Considere adicionar um arquivo LICENSE (por exemplo, MIT ou Apache-2.0) se for distribuir o projeto.
 
-- "Failed to execute winget": ensure `winget` is installed and available in PATH. Open a PowerShell or CMD and run `winget --version` to validate.
-- If updates fail for specific packages, try running `winget upgrade <package>` manually to inspect error messages.
-- If the program cannot find your Desktop directory, the `dirs` crate may not return a value; the code uses `dirs::desktop_dir().unwrap()` which will panic if no Desktop path is available. You can change this behavior to provide a fallback path.
-- If the header detection fails due to localization, update the check that searches for `"Nome"` and `"ID"` in `src/main.rs`.
+## Contribuições
 
-## Suggestions / Improvements
-
-- Make the excluded apps configurable via a CLI flag, config file, or environment variable instead of hard-coding.
-- Make header detection locale-agnostic by parsing columns by position or using winget in a machine-parseable format (if available) or using `--manifest` / API output.
-- Add logging to a file and/or a dry-run mode to preview changes without performing updates.
-- Add argument parsing (e.g., using clap) to control behavior at runtime: dry-run, exclude-list file, path for temporary file, skip rustup update, etc.
-
-## Project Metadata
-
-- Package name: `winget_update` (see Cargo.toml)
-- Version: 0.1.0
-- Cargo profile (release) options: optimized for size and LTO enabled (see Cargo.toml profile.release section)
-
-## License
-
-No license file is provided. If you intend to publish or share this project, consider adding a license (for example, MIT or Apache-2.0) and adding a LICENSE file.
-
-## Contributing
-
-Pull requests and issues are welcome. For suggestions that change default behavior, please document configuration and any new flags in README.
-
----
-
-If you like, I can also:
-
-- Add a sample CLI with argument parsing using clap and replace the hard-coded excluded list with a CLI or config option.
-- Update the header detection to handle English/Portuguese automatically or parse the winget output more robustly.
-- Add a LICENSE file.
-
-Which of these would you like me to do next?
+Sugestões e PRs são bem-vindos. Se alterar o comportamento padrão, documente a mudança neste README.

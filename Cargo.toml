@@ -2,6 +2,10 @@
 name = "winget_update"
 version = "0.1.0"
 edition = "2024"
+description = "A Rust tool to manage and update packages using winget with enhanced features."
+authors = ["Mario Antunes <mario@marioantunes>"]
+license = ""
+
 
 [dependencies]
 colored = "3.0.0"
