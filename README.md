@@ -65,7 +65,7 @@ O executável de release ficará em `target/release/`.
 ## Configuração
 
 - Lista de exclusões: definida em `src/main.rs` no array `excluded_apps`.
-  - Padrão: `["BlueStacks", "AutoIt", "Discord"]`.
+  - Padrão: `["AutoIt", "Discord"]`.
   - A verificação é por substring no nome do pacote (se o nome contém o texto). Ajuste conforme sua necessidade e recompile.
 - Aceite de termos: o programa chama `winget update` com `--accept-package-agreements` e `--accept-source-agreements`.
 
