@@ -1,0 +1,20 @@
+[package]
+name = "winget_update"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+colored = "3.0.0"
+dirs = "6.0.0"
+winapi = { version = "0.3.9", features = ["consoleapi"] }
+figlet-rs = "0.1.5"
+
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+
+[profile.release]
+opt-level = "z"          # Otimização para tamanho
+lto = true               # Link Time Optimization
+codegen-units = 1        # Menos unidades de compilação
+panic = "abort"          # Panic mais leve
+strip = true             # Remove símbolos de debug
