@@ -3,18 +3,33 @@ use figlet_rs::FIGfont;
 use std::process::Command;
 use winapi::um::consoleapi::GetConsoleOutputCP;
 
+/// Representa um pacote retornado por `winget upgrade`.
+/// Cada campo corresponde a uma coluna da tabela do winget.
 #[derive(Debug)]
 struct WingetPackage {
+    /// Nome legível do pacote conforme exibido pelo winget.
     name: String,
+    /// Identificador único do pacote no winget (ex.: `Microsoft.VisualStudioCode`).
     id: String,
+    /// Versão atualmente instalada no sistema.
     current_version: String,
+    /// Versão disponível para atualização.
     available_version: String,
     #[allow(dead_code)]
+    /// Fonte ou repositório do pacote (ex.: `winget` ou `msstore`).
     source: String,
 }
 
+/// Ponto de entrada principal do programa.
+/// - Mostra o logo em ASCII.
+/// - Obtém e exibe a lista de atualizações disponíveis.
+/// - Atualiza os pacotes não excluídos e, ao final, executa `rustup update`.
+/// - Exibe um resumo e aguarda Enter antes de encerrar.
+///
+/// Segurança:
+/// Contém um bloco `unsafe` limitado para ler o code page atual do console via `GetConsoleOutputCP` em Windows.
 fn main() {
-    // Set UTF-8 encoding (Windows only)
+    // Configura o console para UTF-8 no Windows
     #[cfg(windows)]
     {
         unsafe {
@@ -24,18 +39,20 @@ fn main() {
         }
     }
 
-    // Define excluded applications
-    let excluded_apps = ["BlueStacks", "AutoIt", "Discord"];
+    // Define aplicativos a serem excluídos
+    // Discord não atualiza pelo winget
+    // Autoit quero manter a versão que tenho (v3.3.14.5 x86)
+    let excluded_apps = ["AutoIt", "Discord"];
 
-    // Show logo
+    // Exibe o logo
     print_logo();
 
-    // Header
+    // Cabeçalho
     println!("{}", "=======================================".cyan());
     println!("{}", "  WINGET UPDATE SCRIPT (RUST VERSION)".green());
     println!("{}", "=======================================".cyan());
 
-    // Get list of upgradable packages using the new method
+    // Obtém a lista de pacotes atualizáveis usando o novo método
     println!("\n{} Checking for available updates...", "[INFO]".yellow());
 
     match parse_winget_output() {
@@ -51,7 +68,7 @@ fn main() {
                 packages.len()
             );
 
-            // Display available updates
+            // Exibe as atualizações disponíveis
             for package in &packages {
                 println!(
                     "  {} {} -> {}",
@@ -61,22 +78,22 @@ fn main() {
                 );
             }
 
-            // Process updates
+            // Processa atualizações
             println!("\n{} Processing updates...\n", "[INFO]".yellow());
 
             let mut updated_count = 0;
             let mut skipped_count = 0;
 
             for package in packages {
-                println!("{} - Processing...", package.name);
+                println!("{} - Processando...", package.name);
 
-                // Check if app is excluded
+                // Verifica se o app está excluído
                 if excluded_apps
                     .iter()
                     .any(|&excluded| package.name.contains(excluded))
                 {
                     println!(
-                        "{} {} - Excluded from update",
+                        "{} {} - Excluído da atualização",
                         "[SKIPPED]".yellow(),
                         package.name
                     );
@@ -89,7 +106,7 @@ fn main() {
                     .args([
                         "update",
                         "-q",
-                        &package.id, // Use ID instead of name for more reliable updates
+                        &package.id, // Usa ID em vez do nome para atualizações mais confiáveis
                         "--accept-package-agreements",
                         "--accept-source-agreements",
                     ])
@@ -98,40 +115,44 @@ fn main() {
                 match status {
                     Ok(exit_status) if exit_status.success() => {
                         println!(
-                            "{} {} updated successfully!",
+                            "{} {} atualizado com sucesso!",
                             "[SUCCESS]".green(),
                             package.name
                         );
                         updated_count += 1;
                     }
                     _ => {
-                        println!("{} Failed to update {}", "[ERROR]".red(), package.name);
+                        println!("{} Falha ao atualizar {}", "[ERROR]".red(), package.name);
                     }
                 }
                 println!();
             }
 
-            // Update Rust toolchain
+            // Atualiza Rust toolchain
             println!("\n{}", "=======================================".cyan());
-            println!("{}", "Updating Rust toolchain...".green());
+            println!("{}", "Atualizando Rust toolchain...".green());
             println!("{}", "=======================================".cyan());
             Command::new("rustup")
                 .arg("update")
                 .status()
-                .expect("Failed to run rustup update");
+                .expect("Falha ao executar rustup update");
 
-            // Final summary
+            // Resumo final
             println!("\n\n{}", "=======================================".cyan());
-            println!("{}", "UPDATE SUMMARY:".green());
+            println!("{}", "RESUMO DE ATUALIZAÇÃO:".green());
             println!("{}", "=======================================".cyan());
-            println!("{} {}", "Applications updated:".green(), updated_count);
-            println!("{} {}", "Applications skipped:".yellow(), skipped_count);
+            println!("{} {}", "Aplicativos atualizados:".green(), updated_count);
+            println!("{} {}", "Aplicativos ignorados:".yellow(), skipped_count);
             println!("{}", "=======================================".cyan());
-            println!("{}", "Update process completed!".green());
+            println!("{}", "Processo de atualização concluído!".green());
             println!("{}", "=======================================".cyan());
         }
         Err(e) => {
-            println!("{} Error getting winget updates: {}", "[ERROR]".red(), e);
+            println!(
+                "{} Erro ao obter atualizações winget: {}",
+                "[ERROR]".red(),
+                e
+            );
         }
     }
 
@@ -139,6 +160,13 @@ fn main() {
     let _ = std::io::stdin().read_line(&mut String::new());
 }
 
+/// Executa `winget upgrade` e converte a tabela da saída em uma lista de pacotes.
+/// Interrompe o parse quando encontra uma linha informativa (como
+/// "available upgrades"/"upgrades available") ou uma linha em branco.
+///
+/// Retorna:
+/// - `Ok(Vec<WingetPackage>)` em caso de sucesso.
+/// - `Err(...)` se o comando `winget` falhar ou a saída não puder ser lida.
 fn parse_winget_output() -> Result<Vec<WingetPackage>, Box<dyn std::error::Error>> {
     let output = Command::new("winget").arg("upgrade").output()?;
 
@@ -147,7 +175,7 @@ fn parse_winget_output() -> Result<Vec<WingetPackage>, Box<dyn std::error::Error
 
     let mut packages = Vec::new();
 
-    // Pular cabeçalho e linha separadora
+    // Pula o cabeçalho e linha separadora
     for line in lines.iter().skip(2) {
         if line.contains("atualizações disponíveis")
             || line.contains("upgrades available")
@@ -164,6 +192,16 @@ fn parse_winget_output() -> Result<Vec<WingetPackage>, Box<dyn std::error::Error
     Ok(packages)
 }
 
+/// Faz o parse de uma única linha da tabela de `winget upgrade`.
+/// Assume as colunas: Nome, Id, Versão Atual, Versão Disponível e Fonte.
+/// O nome pode conter espaços; por isso os últimos quatro campos são lidos de trás para frente.
+///
+/// Parâmetros:
+/// - `line`: linha bruta de saída do comando `winget upgrade`.
+///
+/// Retorna:
+/// - `Some(WingetPackage)` se o parse for bem-sucedido.
+/// - `None` se a linha não tiver colunas suficientes ou formato inesperado.
 fn parse_winget_line(line: &str) -> Option<WingetPackage> {
     let parts: Vec<&str> = line.split_whitespace().collect();
 
@@ -173,7 +211,7 @@ fn parse_winget_line(line: &str) -> Option<WingetPackage> {
 
     let trimmed = line.trim();
 
-    // Encontrar as posições das colunas baseado nos espaços
+    // Encontra as posições das colunas baseando-se nos espaços
     let mut fields = Vec::new();
     let mut current_field = String::new();
     let mut in_field = false;
@@ -195,7 +233,7 @@ fn parse_winget_line(line: &str) -> Option<WingetPackage> {
         fields.push(current_field.trim().to_string());
     }
 
-    // Reagrupar campos (nome pode ter espaços)
+    // Reagrupar campos (o nome pode ter espaços)
     if fields.len() >= 5 {
         let source = fields.last()?.clone();
         let available_version = fields[fields.len() - 2].clone();
@@ -218,6 +256,10 @@ fn parse_winget_line(line: &str) -> Option<WingetPackage> {
     None
 }
 
+/// Imprime o logo ASCII "winget UPDATE" usando a fonte padrão do `figlet_rs`,
+/// colorido em vermelho.
+///
+/// Nota: em caso de falha ao carregar a fonte padrão, o programa entra em panic via `unwrap()`.
 fn print_logo() {
     let standard_font = FIGfont::standard().unwrap();
     let figure = standard_font.convert("winget UPDATE");
