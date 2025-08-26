@@ -88,10 +88,3 @@ O executável de release ficará em `target/release/`.
 - Versão: 0.1.0
 - Perfil de release: otimizações para tamanho, LTO, `panic = "abort"`, símbolos de debug removidos (ver `Cargo.toml`).
 
-## Licença
-
-Ainda não há licença incluída. Considere adicionar um arquivo LICENSE (por exemplo, MIT ou Apache-2.0) se for distribuir o projeto.
-
-## Contribuições
-
-Sugestões e PRs são bem-vindos. Se alterar o comportamento padrão, documente a mudança neste README.
