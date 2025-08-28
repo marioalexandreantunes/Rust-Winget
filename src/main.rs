@@ -34,7 +34,7 @@ fn main() {
     {
         unsafe {
             if GetConsoleOutputCP() != 65001 {
-                println!("Console is not set to UTF-8 (CP 65001)");
+                println!("{}", "Console is not set to UTF-8 (CP 65001)".red());
             }
         }
     }

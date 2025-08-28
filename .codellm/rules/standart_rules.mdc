@@ -1,0 +1,34 @@
+---
+description: Basic Interaction Rules
+globs: *.rs
+alwaysApply: true
+---
+
+# Rust Code & Collaboration Guidelines
+
+
+## General Rules
+- Always write code in **English**, including variable names, function names, and comments.
+- Avoid unnecessary documentation for **self-explanatory functions or variables** (e.g., `fn get_user()` does not need extra comments).
+- Use **snake_case** for functions, variables, and module names.
+- Use **PascalCase** for structs, enums, and traits.
+- Use **UPPER_CASE** for constants and statics.
+
+
+## Code Practices
+- Keep functions **small and focused**; avoid long functions exceeding 30 lines.
+- Prefer `Result<T, E>` over `panic!` for error handling.
+- No Unwraps in Production: Avoid .unwrap() and .expect() in production code; use proper error handling.
+- Always use `clippy` and `rustfmt` before committing.
+- Avoid unnecessary clones; prefer borrowing (`&`) when possible.
+
+
+## Interaction & Collaboration
+- Provide **English comments** for non-trivial logic or complex algorithms.
+- When sharing code snippets longer than 20 lines, evaluate if it can be **modularized**.
+- Commit messages: Use **imperative mood**, e.g., "Add user login validation".
+- PRs should explain *why* a change is made, not just *what*.
+
+## Testing
+- Include unit tests for critical logic.
+- Follow `#[cfg(test)]` conventions, and name test functions descriptively (e.g., `fn test_user_authentication()`).
