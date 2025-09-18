@@ -137,6 +137,16 @@ fn main() {
                 .status()
                 .expect("Falha ao executar rustup update");
 
+            // Agora vamos verificar algumas coisas no windows 11
+            println!("\n{}", "=======================================".cyan());
+            println!("{}", "Verificador de Ficheiros do Sistema...".green());
+            println!("{}", "=======================================".cyan());
+
+            Command::new("powershell")
+                .args(["-Command", "sfc", "/scannow"])
+                .status()
+                .expect("Falha ao executar sfc /scannow");
+
             // Resumo final
             println!("\n\n{}", "=======================================".cyan());
             println!("{}", "RESUMO DE ATUALIZAÇÃO:".green());
