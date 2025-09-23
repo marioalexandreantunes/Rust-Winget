@@ -10,7 +10,6 @@ license = ""
 [dependencies]
 colored = "3.0.0"
 dirs = "6.0.0"
-winapi = { version = "0.3.9", features = ["consoleapi"] }
 figlet-rs = "0.1.5"
 
 [target.'cfg(windows)'.build-dependencies]

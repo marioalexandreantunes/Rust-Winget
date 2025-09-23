@@ -1,7 +1,6 @@
 use colored::*;
 use figlet_rs::FIGfont;
 use std::process::Command;
-use winapi::um::consoleapi::GetConsoleOutputCP;
 
 /// Representa um pacote retornado por `winget upgrade`.
 /// Cada campo corresponde a uma coluna da tabela do winget.
@@ -29,15 +28,6 @@ struct WingetPackage {
 /// Segurança:
 /// Contém um bloco `unsafe` limitado para ler o code page atual do console via `GetConsoleOutputCP` em Windows.
 fn main() {
-    // Configura o console para UTF-8 no Windows
-    #[cfg(windows)]
-    {
-        unsafe {
-            if GetConsoleOutputCP() != 65001 {
-                println!("{}", "Console is not set to UTF-8 (CP 65001)".red());
-            }
-        }
-    }
 
     // Define aplicativos a serem excluídos
     // Discord não atualiza pelo winget
